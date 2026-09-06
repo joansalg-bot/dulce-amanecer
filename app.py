@@ -6,7 +6,7 @@ from PIL import Image
 from datetime import date, time, timedelta
 
 # ============================================================
-# CONFIGURACIÓN e
+# CONFIGURACIÓN
 # ============================================================
 
 st.set_page_config(
@@ -398,7 +398,7 @@ st.header("🍓 Personaliza tu desayuno")
 if base_sorpresa == "Bandeja Estándar":
 
     st.write(
-        "Puedes agregar 6 productos de tu elección + 1 bebida."
+        "Puedes agregar 6 productos de tu elección + una o varias bebidas."
     )
 
 else:
@@ -556,25 +556,28 @@ if "Fruta x3" in productos_seleccionados:
 
 st.write("---")
 
-st.subheader("🥤 Elige tu bebida")
+st.subheader("🥤 Elige tus bebidas")
 
-bebida = st.selectbox(
-    "Selecciona una bebida:",
+bebidas_seleccionadas = st.multiselect(
+    "Puedes elegir una o varias bebidas:",
     [
-        "No quiero bebida",
         "Milo frío o caliente",
         "Choco Listo",
         "Jugo de naranja",
         "Café en leche"
-    ]
+    ],
+    key="bebidas"
 )
 
 
 # ============================================================
-# PRECIO DE LA BEBIDA
+# PRECIO DE LAS BEBIDAS
 # ============================================================
 
-precio_bebida = bebidas[bebida]
+precio_bebida = sum(
+    bebidas[bebida_seleccionada]
+    for bebida_seleccionada in bebidas_seleccionadas
+)
 
 
 # ============================================================
@@ -808,7 +811,7 @@ st.write(
 )
 
 st.write(
-    f"**Bebida:** {bebida}"
+    f"**🥤 Bebidas:** {', '.join(bebidas_seleccionadas) if bebidas_seleccionadas else 'Ninguna'}"
 )
 
 st.write(
@@ -1047,7 +1050,7 @@ Acabo de realizar un pedido y voy a enviar el comprobante de pago por este medio
 🍓 Frutas:
 {frutas_texto}
 
-🥤 Bebida: {bebida}
+🥤 Bebidas: {", ".join(bebidas_seleccionadas) if bebidas_seleccionadas else "Ninguna"}
 
 ✨ Toppings especiales:
 {toppings_texto}
