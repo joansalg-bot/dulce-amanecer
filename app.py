@@ -1,9 +1,12 @@
 import streamlit as st
 import base64
+import io
+import os
+from PIL import Image
 from datetime import date, time, timedelta
 
 # ============================================================
-# CONFIGURACIÓN
+# CONFIGURACIÓN e
 # ============================================================
 
 st.set_page_config(
@@ -41,120 +44,52 @@ def cargar_fondo(ruta):
         return base64.b64encode(archivo.read()).decode()
 
 
-fondo = cargar_fondo("fondo.png")
+# Cargamos el fondo y lo aplicamos realmente a la aplicación.
+# Antes se estaba codificando la imagen, pero nunca se utilizaba
+# en el CSS, por eso Streamlit mostraba el fondo blanco.
+if os.path.exists("fondo.png"):
+    fondo = cargar_fondo("fondo.png")
 
+    st.markdown(
+        f"""
+        <style>
+        /* Fondo general de la aplicación */
+        [data-testid="stAppViewContainer"] {{
+            background-image:
+                linear-gradient(rgba(255, 248, 245, 0.78), rgba(255, 248, 245, 0.78)),
+                url("data:image/png;base64,{fondo}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }}
 
-# ============================================================
-# DISEÑO
-# ============================================================
+        /* Mantener transparente el contenedor principal para que se vea el fondo */
+        [data-testid="stAppViewContainer"] > .main {{
+            background: transparent;
+        }}
 
-st.markdown(
-    f"""
-    <style>
+        /* Barra superior transparente */
+        [data-testid="stHeader"] {{
+            background: rgba(255, 255, 255, 0.15);
+        }}
 
-    .stApp {{
-        background-image:
-            linear-gradient(
-                rgba(255, 240, 242, 0.15),
-                rgba(255, 240, 242, 0.15)
-            ),
-            url("data:image/png;base64,{fondo}");
-
-        background-size: cover;
-        background-position: center;
-        background-attachment: fixed;
-    }}
-
-    #MainMenu {{
-        visibility: hidden;
-    }}
-
-    footer {{
-        visibility: hidden;
-    }}
-
-    .block-container {{
-        max-width: 1050px;
-        padding-top: 2rem;
-        padding-bottom: 3rem;
-    }}
-
-    /* ========================================================
-       TEXTOS
-       ======================================================== */
-
-    h1,
-    h2,
-    h3,
-    h4,
-    h5,
-    h6 {{
-        color: #111111 !important;
-    }}
-
-    .stApp p,
-    .stApp span {{
-        color: #111111;
-    }}
-
-    .stTextInput label,
-    .stTextArea label,
-    .stSelectbox label,
-    .stMultiSelect label {{
-        color: #111111 !important;
-        font-weight: 600;
-    }}
-
-    /* ========================================================
-       CAMPOS
-       ======================================================== */
-
-    .stTextInput input,
-    .stTextArea textarea {{
-        color: #111111 !important;
-        background-color: rgba(255, 255, 255, 0.92) !important;
-        border-radius: 12px;
-    }}
-
-    .stSelectbox div[data-baseweb="select"],
-    .stMultiSelect div[data-baseweb="select"] {{
-        background-color: rgba(255, 255, 255, 0.92);
-        border-radius: 12px;
-    }}
-
-    .stSelectbox div[data-baseweb="select"] *,
-    .stMultiSelect div[data-baseweb="select"] * {{
-        color: #111111 !important;
-    }}
-
-    /* ========================================================
-       BOTONES
-       ======================================================== */
-
-    .stButton > button {{
-        background-color: #e88aa5;
-        color: #111111 !important;
-        border: none;
-        border-radius: 15px;
-        padding: 0.7rem 1rem;
-        font-size: 18px;
-        font-weight: bold;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.25);
-    }}
-
-    .stButton > button:hover {{
-        background-color: #d96f8f;
-        color: #111111 !important;
-    }}
-
-    hr {{
-        border-color: rgba(0,0,0,0.35);
-    }}
-
-    </style>
-    """,
-    unsafe_allow_html=True
-)
+        /* Contenido con una ligera transparencia para conservar la lectura */
+        [data-testid="stMainBlockContainer"] {{
+            background: rgba(255, 255, 255, 0.25);
+            border-radius: 20px;
+            padding-top: 2rem;
+            padding-bottom: 2rem;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+else:
+    st.warning(
+        "⚠️ No se encontró el archivo fondo.png. "
+        "Colócalo en la misma carpeta que este archivo de Streamlit."
+    )
 
 
 # ============================================================
@@ -165,6 +100,15 @@ st.title("🌅 Dulce Amanecer")
 
 st.subheader(
     "Desayunos que convierten momentos en recuerdos ❤️"
+)
+
+st.info(
+    "✨ Base decorada + 🧁 Toppings + 🌷 Decoración a tu gusto + "
+    "💌 Tarjeta personalizada + 🎁 Toppings especiales (opcional) + "
+    "🥤 Bebida (opcional).\n\n"
+    "💖 Si gustas personalizar aún más tu detalle e incluir otros detalles, "
+    "puedes hacerlo al interno cuando realices tu pedido.\n\n"
+    "🌸 ¡Queremos ayudarte a crear una sorpresa única y especial!"
 )
 
 st.write(
@@ -426,7 +370,6 @@ toppings_especiales = {
 
     "Nutella": 14900,
 
-    "Cerveza Corona": 5000 ,
   
     "Boung Yourth": 4900,
 
@@ -649,8 +592,110 @@ toppings_especiales_seleccionados = st.multiselect(
 )
 
 
+# ----------------------------------------------------
+# IDEAS DE DECORACIÓN SEGÚN LA BASE
+# ----------------------------------------------------
+
+idea_seleccionada = None
+
+ideas_por_base = {
+    "Bandeja Estándar": ("estandar", 15),
+    "Caja de Madera - Grande": ("cajagrande", 4),
+    "Caja de Madera - Mediana": ("cajamediana", 3),
+    "Caja de Madera - Pequeña": ("cajapequeña", 7),
+    "Caja Octagonal - Grande": ("cajaoctogonalgrande", 3),
+    "Caja Octagonal - Mediana": ("cajaoctagonalmediana", 3),
+    "Caja de Madera con Patas - Grande": ("cajagrandeconpatas", 4),
+    "Caja de Madera con Patas - Mediana": ("cajamedianaconpatas", 3),
+    "Caja de Madera con Patas - Pequeña": ("cajaconpataspequeña", 2)
+}
+
+clave_ideas = None
+nombre_idea = None
+
+if base_sorpresa == "Bandeja Estándar":
+    clave_ideas = "Bandeja Estándar"
+elif base_sorpresa == "Caja de Madera":
+    clave_ideas = f"Caja de Madera - {tamano}"
+elif base_sorpresa == "Caja Octagonal":
+    clave_ideas = f"Caja Octagonal - {tamano}"
+elif base_sorpresa == "Caja de Madera con Patas":
+    clave_ideas = f"Caja de Madera con Patas - {tamano}"
+
+if clave_ideas in ideas_por_base:
+
+    nombre_idea, cantidad_ideas = ideas_por_base[clave_ideas]
+
+    st.write("---")
+
+    # Cada presentación tiene su propio botón para mostrar sus ideas.
+    clave_mostrar = f"mostrar_ideas_{nombre_idea}"
+
+    if clave_mostrar not in st.session_state:
+        st.session_state[clave_mostrar] = False
+
+    if st.button("🌷 VER IDEAS", key=f"ver_ideas_{nombre_idea}"):
+        st.session_state[clave_mostrar] = True
+
+    if st.session_state[clave_mostrar]:
+
+        st.subheader("🌸 Ideas de decoración")
+
+        st.write(
+            "Estos son algunos de nuestros hermosos detalles. "
+            "La decoración la escoges tú a tu gusto 💕"
+        )
+
+        st.markdown(
+            "### 💕 Escoge una de las ideas para hacer la base de tu desayuno"
+        )
+
+        imagenes_ideas = [
+            f"{nombre_idea}{i}.jfif" for i in range(1, cantidad_ideas + 1)
+        ]
+
+        # Mostrar las ideas numeradas en una cuadrícula de 3 columnas.
+        for fila in range(0, len(imagenes_ideas), 3):
+
+            columnas = st.columns(3)
+
+            for posicion, columna in enumerate(columnas):
+
+                indice = fila + posicion
+
+                if indice < len(imagenes_ideas):
+
+                    numero = indice + 1
+                    ruta = imagenes_ideas[indice]
+
+                    with columna:
+                        st.markdown(f"**Idea {numero}**")
+                        st.image(ruta, use_container_width=True)
+
+        # El cliente puede escoger una sola idea.
+        opciones_ideas = [
+            f"Idea {i}" for i in range(1, cantidad_ideas + 1)
+        ]
+
+        idea_seleccionada = st.selectbox(
+            "🌷 Escoge una de las ideas para hacer la base de tu desayuno:",
+            opciones_ideas,
+            key=f"idea_{nombre_idea}"
+        )
+
+        st.success(
+            f"💕 Has escogido la **{idea_seleccionada}** como base "
+            "de tu desayuno."
+        )
+
+        if st.button("✖ OCULTAR IDEAS", key=f"ocultar_ideas_{nombre_idea}"):
+            st.session_state[clave_mostrar] = False
+            st.rerun()
+
+
 # ============================================================
 # CÁLCULO DE PRODUCTOS
+
 # ============================================================
 
 costo_productos = 0
@@ -701,32 +746,11 @@ fecha_entrega = st.date_input(
     key="fecha_entrega"
 )
 
-cupos = cupos_disponibles(fecha_entrega)
-
-if cupos <= 0:
-    st.error(
-        "🚫 Esta fecha ya está agotada. Selecciona otro día."
-    )
-else:
-    if cupos == 1:
-        st.warning("⚠️ ¡Último cupo disponible para este día!")
-    else:
-        st.success(
-            f"🟢 Hay {cupos} de {MAX_CUPOS_POR_DIA} "
-            "cupos disponibles para este día."
-        )
-
-    hora_entrega = st.time_input(
-        "🕐 Selecciona la hora de entrega:",
-        value=time(8, 0),
-        step=timedelta(minutes=30),
-        key="hora_entrega"
-    )
-
-st.info(
-    "💡 El cupo se descontará únicamente cuando el pago "
-    "sea confirmado. Seleccionar una fecha no reserva "
-    "el cupo todavía."
+hora_entrega = st.time_input(
+    "🕐 Selecciona la hora de entrega:",
+    value=time(8, 0),
+    step=timedelta(minutes=30),
+    key="hora_entrega"
 )
 
 # ============================================================
@@ -794,12 +818,6 @@ st.write(
 st.write(
     f"**🕐 Hora de entrega:** {hora_entrega.strftime('%I:%M %p')}"
 )
-
-st.write(
-    f"**Cupos disponibles para ese día:** "
-    f"{cupos} de {MAX_CUPOS_POR_DIA}"
-)
-
 
 # ============================================================
 # PRODUCTOS DULCES EN EL RESUMEN
@@ -880,170 +898,189 @@ st.write(
 
 
 # ============================================================
-# BOTÓN
+# BOTÓN REALIZAR PAGO
 # ============================================================
 
+if "mostrar_pago" not in st.session_state:
+    st.session_state.mostrar_pago = False
+
 if st.button(
-    "🎁 REALIZAR PEDIDO",
+    "💳 REALIZAR PAGO",
     use_container_width=True
 ):
+    # IMPORTANTE:
+    # El pago puede iniciarse aunque el cliente todavía no haya
+    # completado todos los datos del pedido.
+    st.session_state.mostrar_pago = True
 
-    if not nombre or not direccion:
 
-        st.warning(
-            "Por favor, completa el nombre "
-            "y la dirección de entrega."
-        )
+# ============================================================
+# OPCIONES DE PAGO
+# ============================================================
 
-    elif cupos <= 0:
+if st.session_state.mostrar_pago:
 
-        st.warning(
-            "La fecha seleccionada ya no tiene cupos disponibles. "
-            "Por favor, selecciona otro día."
-        )
+    st.write("---")
+    st.header("💳 Selecciona cómo deseas pagar")
 
-    elif (
-        base_sorpresa == "Bandeja Estándar"
-        and len(productos_seleccionados) != 6
-    ):
+    st.info(
+        "Puedes realizar el pago de la base ahora o pagar "
+        "el valor total de tu pedido."
+    )
 
-        st.warning(
-            "La Bandeja Estándar debe tener "
-            "exactamente 6 productos."
-        )
+    opcion_pago = st.radio(
+        "Elige una opción:",
+        [
+            f"💰 Pago base — ${precio_base:,.0f}",
+            f"💳 Pago total — ${total:,.0f}"
+        ],
+        key="opcion_pago"
+    )
 
-    elif (
-        "Fruta x3" in productos_seleccionados
-        and len(frutas_seleccionadas) != 3
-    ):
-
-        st.warning(
-            "Debes seleccionar exactamente "
-            "3 frutas para la opción Fruta x3."
-        )
-
+    if opcion_pago.startswith("💰 Pago base"):
+        valor_a_pagar = precio_base
+        tipo_pago = "Pago base"
     else:
+        valor_a_pagar = total
+        tipo_pago = "Pago total"
 
-        st.success(
-            "🎉 ¡Pedido preparado!"
+    st.success(
+        f"Has seleccionado **{tipo_pago}**. "
+        f"Valor a pagar: **${valor_a_pagar:,.0f}**"
+    )
+
+    st.subheader("📱 Realiza tu pago")
+
+    st.write(
+        "Escanea el siguiente código QR para realizar el pago:"
+    )
+
+    ruta_qr = "QR.jfif"
+
+    if os.path.exists(ruta_qr):
+        st.image(
+            ruta_qr,
+            caption="Código QR de pago",
+            use_container_width=False,
+            width=350
+        )
+    else:
+        st.error(
+            "⚠️ No se encontró QR.jfif. "
+            "Coloca la imagen QR.jfif en la misma carpeta "
+            "que este archivo de Streamlit."
         )
 
-        st.write(
-            f"**Destinatario:** {nombre}"
-        )
+    st.markdown(
+        """
+        ### 🔑 Pago mediante Llave
 
-        st.write(
-            f"**Dirección:** {direccion}"
-        )
+        **3143564845**
+        """
+    )
 
-        st.write(
-            f"**Desayuno:** {desayuno}"
-        )
+    st.write(
+        f"💵 **Valor seleccionado para pagar: ${valor_a_pagar:,.0f}**"
+    )
 
-        st.write(
-            f"**Presentación:** {base_sorpresa}"
-        )
+    st.caption(
+        "El pago base corresponde únicamente al precio de la "
+        "presentación seleccionada. El pago total corresponde "
+        "al valor completo del pedido."
+    )
 
-        st.write(
-            f"**Tamaño:** {tamano}"
-        )
+    # ========================================================
+    # ENVÍO DEL COMPROBANTE Y FOTOS POR WHATSAPP
+    # ========================================================
 
-        st.write(
-            f"**Bebida:** {bebida}"
-        )
+    st.write("---")
+    st.header("📲 Envía tu comprobante y fotos")
 
-        st.write(
-            f"**📅 Fecha de entrega:** "
-            f"{fecha_entrega.strftime('%d/%m/%Y')}"
-        )
+    st.info(
+        "Después de realizar el pago, envía por WhatsApp tu "
+        "comprobante de pago. Si deseas una tarjeta especial con "
+        "mensaje, también puedes enviar 2 o 3 fotos. 💕 "
+        "Las fotos son opcionales."
+    )
 
-        st.write(
-            f"**🕐 Hora de entrega:** "
-            f"{hora_entrega.strftime('%I:%M %p')}"
-        )
+    productos_dulces_texto = (
+        ", ".join(productos_dulces_seleccionados)
+        if productos_dulces_seleccionados else "Ninguno"
+    )
 
-        # ----------------------------------------------------
-        # PRODUCTOS DULCES
-        # ----------------------------------------------------
+    productos_salados_texto = (
+        ", ".join(productos_salados_seleccionados)
+        if productos_salados_seleccionados else "Ninguno"
+    )
 
-        if productos_dulces_seleccionados:
+    toppings_texto = (
+        ", ".join(toppings_especiales_seleccionados)
+        if toppings_especiales_seleccionados else "Ninguno"
+    )
 
-            st.write("**🍫 Productos dulces:**")
+    frutas_texto = (
+        ", ".join(frutas_seleccionadas)
+        if frutas_seleccionadas else "No aplica"
+    )
 
-            for producto in productos_dulces_seleccionados:
+    idea_texto = idea_seleccionada if idea_seleccionada else "No seleccionada"
 
-                if producto == "Fruta x3":
+    mensaje_whatsapp = f"""Hola, Dulce Amanecer 🌅💕
 
-                    st.write(
-                        "✓ Fruta x3: "
-                        + ", ".join(frutas_seleccionadas)
-                    )
+Acabo de realizar un pedido y voy a enviar el comprobante de pago por este medio.
 
-                else:
+📋 DATOS DEL PEDIDO
 
-                    st.write(
-                        f"✓ {producto}"
-                    )
+👤 Persona que recibe: {nombre if nombre else "No especificado"}
+📱 Tipo de desayuno: {desayuno}
 
-        # ----------------------------------------------------
-        # PRODUCTOS SALADOS
-        # ----------------------------------------------------
+🎁 Presentación: {base_sorpresa}
+📦 Tamaño: {tamano}
+🌷 Idea de decoración: {idea_texto}
 
-        if productos_salados_seleccionados:
+🍫 Productos dulces:
+{productos_dulces_texto}
 
-            st.write("**🍗 Productos salados:**")
+🍗 Productos salados:
+{productos_salados_texto}
 
-            for producto in productos_salados_seleccionados:
+🍓 Frutas:
+{frutas_texto}
 
-                st.write(
-                    f"✓ {producto}"
-                )
+🥤 Bebida: {bebida}
 
-        # ----------------------------------------------------
-        # TOPPINGS ESPECIALES
-        # ----------------------------------------------------
+✨ Toppings especiales:
+{toppings_texto}
 
-        if toppings_especiales_seleccionados:
+💌 Mensaje para la persona:
+{mensaje if mensaje else "Sin mensaje"}
 
-            st.write("**✨ Toppings especiales:**")
+📅 Fecha de entrega: {fecha_entrega.strftime("%d/%m/%Y")}
+🕐 Hora de entrega: {hora_entrega.strftime("%I:%M %p")}
+📍 Dirección de entrega: {direccion if direccion else "No especificada"}
 
-            for topping in toppings_especiales_seleccionados:
+💰 Tipo de pago: {tipo_pago}
+💵 Valor seleccionado para pagar: ${valor_a_pagar:,.0f}
+💰 Valor total del pedido: ${total:,.0f}
 
-                st.write(
-                    f"✓ {topping}"
-                )
+📸 Voy a adjuntar el comprobante de pago y, si corresponde,
+las fotos para la tarjeta especial.
 
-        # ----------------------------------------------------
-        # MENSAJE
-        # ----------------------------------------------------
+Gracias 💕
+"""
 
-        if mensaje:
+st.link_button(
+    "📲 ENVIAR COMPROBANTE POR WHATSAPP",
+    "https://wa.me/qr/LUMZA6QOLXY4M1",
+    use_container_width=True
+)
 
-            st.write(
-                f"**Mensaje:** {mensaje}"
-            )
-
-        # ----------------------------------------------------
-        # TOTAL
-        # ----------------------------------------------------
-
-        st.write(
-            f"### 💰 Total: ${total:,.0f}"
-        )
-
-        st.balloons()
-
-        # IMPORTANTE:
-        # El cupo NO se descuenta aquí.
-        # Cuando integremos el pago, el descuento de 1 cupo
-        # se hará únicamente después de recibir la confirmación
-        # de pago exitoso.
+    
 
 
 # ============================================================
 # PIE DE PÁGINA
 # ============================================================
-
 st.write("---")
 
 st.markdown(
