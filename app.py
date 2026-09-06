@@ -733,6 +733,11 @@ for topping in toppings_especiales_seleccionados:
 st.write("---")
 st.header("📅 Fecha y hora de entrega")
 
+st.warning(
+    "⏰ Recuerda hacer tu pedido mínimo con 2 días de anticipación "
+    "para verificar disponibilidad."
+)
+
 st.write(
     "Selecciona el día y la hora en que deseas recibir tu desayuno."
 )
